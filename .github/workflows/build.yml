@@ -1,0 +1,48 @@
+name: Build cut files
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSCAD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openscad
+          openscad --version
+
+      - name: Build DXF and STEP
+        run: ./build.sh
+
+      - name: Check envelopes are non-empty
+        run: |
+          for f in output/base.dxf output/base.step output/guard.dxf output/guard.step; do
+            test -s "$f" || { echo "missing or empty: $f"; exit 1; }
+          done
+
+      - name: Package
+        run: |
+          cd output
+          zip -j "../splinter-65-${GITHUB_REF_NAME//\//-}.zip" *.dxf *.step
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: splinter-65-cut-files
+          path: output/*
+
+      - name: Attach files to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" output/*.dxf output/*.step ./*.zip --clobber
