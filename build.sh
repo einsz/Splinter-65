@@ -36,7 +36,10 @@ for entry in "${PARTS[@]}"; do
 
     if [[ $STEP == 1 ]]; then
         rm -f "$OUT/$name.step"
-        docker run --rm -v "$PWD:/workspace" -w /workspace \
+        # Run as the host user. The image defaults to uid 1000, which cannot
+        # write into $OUT when the checkout is owned by another uid (CI).
+        docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD:/workspace" -w /workspace \
             cadquery/cadquery \
             python3 dxf2step.py "$OUT/$name.dxf" "$OUT/$name.step" "$thickness"
     fi

@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
 # Copyright (c) 2026 Julian Jakobs
 
+import os
 import sys
+
 import cadquery as cq
 
 if len(sys.argv) != 4:
@@ -28,7 +30,13 @@ try:
     
     print(f"Exporting solid STEP format to {output_step}...")
     cq.exporters.export(solid_model, output_step)
-    
+
+    # OpenCASCADE's STEP writer reports failure on stdout and returns
+    # normally, so an unwritable output directory would otherwise look
+    # like a successful build.
+    if not os.path.getsize(output_step):
+        raise RuntimeError(f"{output_step} was not written")
+
     print("Success!")
     
 except Exception as e:
